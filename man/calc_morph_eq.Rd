@@ -4,20 +4,25 @@
 \alias{calc_morph_eq}
 \title{Calculate morphine equivalents}
 \usage{
-calc_morph_eq(df)
+calc_morph_eq(df, ...)
 }
 \arguments{
 \item{df}{data_frame}
+
+\item{...}{optional named arguments with column names}
 }
 \value{
 data_frame
 }
 \description{
-This takes a data frame with columns: med, med.dose, med.dose.units, and
-route and will convert the med.dose to the morphine equivalent.
+This takes a data frame with columns: medication, med_product, dose,
+dose_units, frequency, and route and will convert the dose to the IV morphine
+equivalent. The columns containing each of these parameters can optionally be
+passed as named arguments if they differ from the default column names.
 }
 \references{
 Lexicomp - Opiod Agonist Conversion (from drug, to Morphine IM);
-https://www.cms.gov/Medicare/Prescription-Drug-Coverage/PrescriptionDrugCovContra/Downloads/Opioid-Morphine-EQ-Conversion-Factors-March-2015.pdf (note, doses listed in oral mme, converted to iv mme by * 0.3);
-http://clincalc.com/opioids/
+  https://www.cms.gov/Medicare/Prescription-Drug-Coverage/PrescriptionDrugCovContra/Downloads/Opioid-Morphine-EQ-Conversion-Factors-March-2015.pdf
+   (note, doses listed in oral mme, converted to iv mme by * 0.3);
+  http://clincalc.com/opioids/
 }
