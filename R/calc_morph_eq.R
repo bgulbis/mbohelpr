@@ -2,7 +2,7 @@
 #' Calculate morphine equivalents
 #'
 #' This takes a data frame with columns: medication, med_product, dose,
-#' dose_units, frequency, and route and will convert the dose to the IV morphine
+#' dose_unit, frequency, and route and will convert the dose to the IV morphine
 #' equivalent. The columns containing each of these parameters can optionally be
 #' passed as named arguments if they differ from the default column names.
 #'
@@ -33,15 +33,15 @@ calc_morph_eq <- function(df, ...) {
     }
 
     if ("dose" %in% names(col)) {
-        med_dose <- cols$dose
+        dose <- cols$dose
     } else {
-        med_dose <- rlang::sym("dose")
+        dose <- rlang::sym("dose")
     }
 
     if ("dose_unit" %in% names(col)) {
-        med_dose_units <- cols$dose_unit
+        dose_unit <- cols$dose_unit
     } else {
-        med_dose_units <- rlang::sym("dose_unit")
+        dose_unit <- rlang::sym("dose_unit")
     }
 
     if ("frequency" %in% names(col)) {
@@ -82,7 +82,8 @@ calc_morph_eq <- function(df, ...) {
         stringr::str_detect(!!med_product, "8 mg - 2 mg") ~ 8,
         stringr::str_detect(!!med_product, "5/325|325( )?(mg)?-5|5( )?mg") ~ 5,
         !!med_product == "acetaminophen-hydrocodone" ~ 5,
-        !!med_product == "acetaminophen-codeine" ~ 30
+        !!med_product == "acetaminophen-codeine" ~ 30,
+        TRUE ~ 1
     )
 
     # determine frequency for patches
@@ -93,21 +94,22 @@ calc_morph_eq <- function(df, ...) {
 
     # conversion to morphine equivalents
     convert <- rlang::quos(
+        stringr::str_detect(!!med, "morphine") & route_group == "IV" ~ dose_mg,
         !!med == "buprenorphine" & route_group == "TOP" ~ 3.8,
         stringr::str_detect(!!med, "buprenorphine") & route_group == "PO" ~ 3.3,
         !!med == "butorphenol" ~ dose_mg * 5,
         stringr::str_detect(!!med, "codeine") & route_group == "PO" ~ dose_mg * 0.05,
         stringr::str_detect(!!med, "codeine") & route_group == "IV" ~ dose_mg * 0.1,
-        !!med == "fentanyl" & route_group == "IV" ~ dose_mg * 0.1,
+        stringr::str_detect(!!med, "fentanyl") & route_group == "IV" ~ dose_mg * 0.1,
         !!med == "fentanyl" & route_group == "NASAL" ~ dose_mg * 0.16 * 0.3,
         !!med == "fentanyl" & route_group == "TOP" ~ dose_mg * dose_freq * 2.4 * 0.3,
         stringr::str_detect(!!med, "hydrocodone") ~ dose_mg * 0.3,
         !!med == "hydromorphone" & route_group == "PO" ~ dose_mg * 1.3,
-        !!med == "hydromorphone" & route_group == "IV" ~ dose_mg * 6.7,
+        stringr::str_detect(!!med, "hydromorphone") & route_group == "IV" ~ dose_mg * 6.7,
         !!med == "levorphanol" ~ dose_mg * 5,
         !!med == "mepridine" ~ dose_mg * 0.1,
         !!med == "methadone" & route_group == "PO" ~ dose_mg * 3 * 0.3,
-        !!med == "morphine" & route_group == "PO" ~ dose_mg * 0.3,
+        stringr::str_detect(!!med, "morphine") & route_group == "PO" ~ dose_mg * 0.3,
         !!med == "nalbuphine" ~ dose_mg * 1,
         !!med == "opium" ~ dose_mg * 0.3,
         stringr::str_detect(!!med, "oxycodone") & route_group == "PO" ~ dose_mg * 0.5,
@@ -115,7 +117,7 @@ calc_morph_eq <- function(df, ...) {
         !!med == "oxymorphone" & route_group == "IV" ~ dose_mg * 10,
         !!med == "pentazocine" ~ dose_mg * 0.37 * 0.3,
         !!med == "tapentadol" ~ dose_mg * 0.1,
-        !!med == "remifentanil" & med_dose_units == "mg" ~ dose_mg * 100, # dose recorded in mg; assume equiv with fentanyl
+        !!med == "remifentanil" & dose_unit == "mg" ~ dose_mg * 100, # dose recorded in mg; assume equiv with fentanyl
         !!med == "sufentanil" ~ dose_mg * 0.5, # 100mcg = 50mg
         !!med == "tramadol" ~ dose_mg * 0.08
     )
@@ -170,9 +172,9 @@ calc_morph_eq <- function(df, ...) {
             # calculate the mg given in each dose; needed when dose is charted
             # in number of tabs, etc.
             !!"dose_mg" := dplyr::if_else(
-                !!med_dose_units %in% c("tab", "mL", "supp", "patch"),
-                !!rlang::sym("tab_mg") * !!med_dose,
-                !!med_dose
+                !!dose_unit %in% c("tab", "mL", "supp", "patch"),
+                !!rlang::sym("tab_mg") * !!dose,
+                !!dose
             ),
             !!"dose_freq" := dplyr::case_when(!!!freq),
             !!"mme_iv" := dplyr::case_when(!!!convert)
