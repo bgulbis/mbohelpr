@@ -16,7 +16,7 @@ data_frame
 }
 \description{
 This takes a data frame with columns: medication, med_product, dose,
-dose_units, frequency, and route and will convert the dose to the IV morphine
+dose_unit, frequency, and route and will convert the dose to the IV morphine
 equivalent. The columns containing each of these parameters can optionally be
 passed as named arguments if they differ from the default column names.
 }
