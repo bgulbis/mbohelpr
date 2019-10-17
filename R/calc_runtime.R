@@ -177,7 +177,13 @@ drip_runtime <- function(df, ..., drip_off = 12, no_doc = 24, units = "hours") {
         dplyr::ungroup() %>%
         dplyr::bind_rows(drip_end) %>%
         dplyr::arrange(!!id, !!med, !!drip_count, !!rate_start) %>%
-        dplyr::distinct()
+        dplyr::distinct(
+            !!id,
+            !!med,
+            !!drip_count,
+            !!rlang::sym("start_time"),
+            .keep_all = TRUE
+        )
 }
 
 #' Calculate the running time for serial measurement data
@@ -219,9 +225,9 @@ calc_runtime <- function(df, ..., units = "hours") {
     }
 
     df %>%
-        group_by(!!id, !!event) %>%
-        arrange(!!event_datetime, .by_group = TRUE) %>%
-        mutate(
+        dplyr::group_by(!!id, !!event) %>%
+        dplyr::arrange(!!event_datetime, .by_group = TRUE) %>%
+        dplyr::mutate(
             !!"duration" := difftime(
                 !!event_datetime,
                 dplyr::lag(!!event_datetime),
@@ -234,6 +240,12 @@ calc_runtime <- function(df, ..., units = "hours") {
                 units = units
             )
         ) %>%
-        ungroup()
+        dplyr::ungroup() %>%
+        dplyr::distinct(
+            !!id,
+            !!event,
+            !!rlang::sym("start_time"),
+            .keep_all = TRUE
+        )
 
 }
