@@ -4,10 +4,12 @@
 \alias{summarize_drips}
 \title{Summary calculations for continuous infusion data}
 \usage{
-summarize_drips(df, ..., units = "hours")
+summarize_drips(df, .grp_var, ..., units = "hours")
 }
 \arguments{
 \item{df}{A data frame with continuous data}
+
+\item{.grp_var}{column names to group by, wrapped by dplyr::vars}
 
 \item{...}{optional named arguments with column names}
 

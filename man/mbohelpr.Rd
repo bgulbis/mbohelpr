@@ -3,7 +3,6 @@
 \docType{package}
 \name{mbohelpr}
 \alias{mbohelpr}
-\alias{mbohelpr-package}
 \title{Helper Functions for Data from MBO}
 \description{
 \pkg{mbohelpr} provides functions to facilitate working with data extracted

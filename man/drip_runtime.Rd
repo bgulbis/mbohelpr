@@ -4,10 +4,12 @@
 \alias{drip_runtime}
 \title{Calculate the running time for continuous infusion data}
 \usage{
-drip_runtime(df, ..., drip_off = 12, no_doc = 24, units = "hours")
+drip_runtime(df, .grp_var, ..., drip_off = 12, no_doc = 24, units = "hours")
 }
 \arguments{
 \item{df}{A data frame}
+
+\item{.grp_var}{column names to group by, wrapped by dplyr::vars}
 
 \item{...}{optional named arguments with column names}
 

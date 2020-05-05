@@ -4,10 +4,12 @@
 \alias{summarize_data}
 \title{Summarize serial measurement data}
 \usage{
-summarize_data(df, ...)
+summarize_data(df, .grp_var, ...)
 }
 \arguments{
 \item{df}{A data frame with continuous data}
+
+\item{.grp_var}{column names to group by, wrapped by dplyr::vars}
 
 \item{...}{optional named arguments with column names}
 }

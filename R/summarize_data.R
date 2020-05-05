@@ -11,6 +11,7 @@
 #' duration, total infusion running time, and cumulative dose.
 #'
 #' @param df A data frame with continuous data
+#' @param .grp_var column names to group by, wrapped by dplyr::vars
 #' @param ... optional named arguments with column names
 #' @param units An optional character string specifying the time units to use in
 #'   calculations, default is hours
@@ -18,17 +19,17 @@
 #' @return A data frame
 #'
 #' @export
-summarize_drips <- function(df, ..., units = "hours") {
+summarize_drips <- function(df, .grp_var, ..., units = "hours") {
     # turn off scientific notation
     options(scipen = 999)
 
     cols <- rlang::enquos(...)
 
-    if ("id" %in% names(cols)) {
-        id <- cols$id
-    } else {
-        id <- rlang::sym("encounter_id")
-    }
+    # if ("id" %in% names(cols)) {
+    #     id <- cols$id
+    # } else {
+    #     id <- rlang::sym("encounter_id")
+    # }
 
     if ("medication" %in% names(cols)) {
         med <- cols$medication
@@ -42,7 +43,7 @@ summarize_drips <- function(df, ..., units = "hours") {
         rate <- rlang::sym("rate")
     }
 
-    grp_by <- quos(!!id, !!med, !!rlang::sym("drip_count"))
+    grp_by <- quos(!!!.grp_var, !!med, !!rlang::sym("drip_count"))
     start_time <- rlang::sym("start_time")
     rate_start <- rlang::sym("rate_start")
     duration <- rlang::sym("duration")
@@ -82,8 +83,7 @@ summarize_drips <- function(df, ..., units = "hours") {
         inner_join(
             nz_rate,
             by = c(
-                rlang::quo_text(id),
-                # purrr::map_chr(group_var, rlang::quo_text),
+                purrr::map_chr(.grp_var, rlang::as_name),
                 "medication",
                 "drip_count"
             )
@@ -165,23 +165,24 @@ summarize_home_meds <- function(x, ..., ref, pts = NULL, home = TRUE) {
 #' data for each patient.
 
 #' @param df A data frame with continuous data
+#' @param .grp_var column names to group by, wrapped by dplyr::vars
 #' @param ... optional named arguments with column names
 #'
 #' @return tibble
 #'
 #' @export
-summarize_data <- function(df, ...) {
+summarize_data <- function(df, .grp_var, ...) {
     # turn off scientific notation
     options(scipen = 999)
 
 
     cols <- rlang::enquos(...)
 
-    if ("id" %in% names(cols)) {
-        id <- cols$id
-    } else {
-        id <- rlang::sym("encounter_id")
-    }
+    # if ("id" %in% names(cols)) {
+    #     id <- cols$id
+    # } else {
+    #     id <- rlang::sym("encounter_id")
+    # }
 
     if ("event" %in% names(cols)) {
         event <- cols$event
@@ -202,8 +203,8 @@ summarize_data <- function(df, ...) {
     }
 
     df %>%
-        dplyr::add_count(!!id, !!event) %>%
-        group_by(!!id, !!event, !!rlang::sym("n")) %>%
+        dplyr::add_count(!!!.grp_var, !!event) %>%
+        group_by(!!!.grp_var, !!event, !!rlang::sym("n")) %>%
         summarize(
             !!"first_datetime" := dplyr::first(!!event_datetime),
             !!"last_datetime" := dplyr::last(!!event_datetime),
@@ -216,7 +217,7 @@ summarize_data <- function(df, ...) {
             !!"auc" := MESS::auc(!!rlang::sym("start_time"), !!result),
             !!"duration" := dplyr::last(!!rlang::sym("start_time"))
         ) %>%
-        group_by(!!id, !!event) %>%
+        group_by(!!!.grp_var, !!event) %>%
         dplyr::mutate_at("duration", as.numeric) %>%
         mutate(!!"time_wt_avg" := !!rlang::sym("auc") / !!rlang::sym("duration")) %>%
         ungroup()
