@@ -235,6 +235,7 @@ calc_runtime <- function(df, .grp_var, ..., units = "hours") {
                 dplyr::lag(!!event_datetime),
                 units = units
             ),
+            !!"duration" := as.numeric(!!sym("duration")),
             !!"duration" := dplyr::coalesce(!!sym("duration"), 0),
             !!"start_time" := difftime(
                 !!event_datetime,
