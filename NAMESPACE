@@ -2,6 +2,7 @@
 
 export(calc_morph_eq)
 export(calc_runtime)
+export(concat_encounters)
 export(drip_runtime)
 export(get_data)
 export(lab_change)
