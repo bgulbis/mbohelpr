@@ -11,7 +11,9 @@ drip_runtime(df, .grp_var, ..., drip_off = 12, no_doc = 24, units = "hours")
 
 \item{.grp_var}{column names to group by, wrapped by dplyr::vars}
 
-\item{...}{optional named arguments with column names}
+\item{...}{optional named arguments with column names; optional arguments
+include: med, med_datetime, rate, and rate_unit; if not specified,
+medication, med_datetime, rate, and rate_unit are used for column names}
 
 \item{drip_off}{An optional numeric indicating the number of hours a
 medication infusion should be off to count as a new infusion, defaults to
