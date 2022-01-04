@@ -1,7 +1,7 @@
 Package: mbohelpr
 Type: Package
 Title: Helper Functions for Data from MBO
-Version: 0.0.7
+Version: 0.0.8
 Authors@R: person("Brian", "Gulbis", email="brian.gulbis@gmail.com", role=c("aut","cre"))
 Description: This package provides functions for working with data from Millennium Business Objects (MBO).
 License: GPL-3
@@ -15,6 +15,7 @@ Imports:
     MESS,
     purrr,
     readr,
+    readxl,
     rlang,
     stringr
 RoxygenNote: 7.1.2
