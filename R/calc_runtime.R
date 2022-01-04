@@ -48,7 +48,7 @@ drip_runtime <- function(df, .grp_var, ..., drip_off = 12, no_doc = 24, units = 
     } else if ("med" %in% names(cols)) {
         med <- cols$med
     } else {
-        med <- rlang::sym("event")
+        med <- rlang::sym("medication")
     }
 
     if ("med_datetime" %in% names(cols)) {
@@ -56,7 +56,7 @@ drip_runtime <- function(df, .grp_var, ..., drip_off = 12, no_doc = 24, units = 
     } else if ("dose_datetime" %in% names(cols)) {
         med_datetime <- cols$dose_datetime
     } else {
-        med_datetime <- rlang::sym("event_datetime")
+        med_datetime <- rlang::sym("med_datetime")
     }
 
     if ("rate" %in% names(cols)) {
@@ -64,7 +64,7 @@ drip_runtime <- function(df, .grp_var, ..., drip_off = 12, no_doc = 24, units = 
     } else if ("infusion_rate" %in% names(cols)) {
         rate <- cols$infusion_rate
     } else {
-        rate <- rlang::sym("result")
+        rate <- rlang::sym("rate")
     }
 
     if ("rate_unit" %in% names(cols)) {
@@ -72,7 +72,7 @@ drip_runtime <- function(df, .grp_var, ..., drip_off = 12, no_doc = 24, units = 
     } else if ("infusion_unit" %in% names(cols)) {
         rate_unit <- cols$infusion_unit
     } else {
-        rate_unit <- rlang::sym("result_units")
+        rate_unit <- rlang::sym("rate_unit")
     }
 
     change_num <- rlang::sym("change_num")
