@@ -4,16 +4,16 @@
 \alias{med_runtime}
 \title{Calculate the running time for intermittent medication data}
 \usage{
-med_runtime(df, .grp_var, ..., med_off = 24, no_doc = 24, units = "hours")
+med_runtime(df, ..., .grp_var, med_off = 24, no_doc = 24, units = "hours")
 }
 \arguments{
 \item{df}{A data frame}
 
-\item{.grp_var}{column names to group by, wrapped by dplyr::vars}
-
 \item{...}{optional named arguments with column names; optional arguments
-are: med, med_datetime, and dose; if not specified, medication,
-med_datetime, and dose are used for column names}
+are: id, med, med_datetime, and dose; if not specified, encntr_id, medication,
+med_datetime, and dose are used for column names, respectively}
+
+\item{.grp_var}{column names to group by, uses \code{tidy_select}}
 
 \item{med_off}{An optional numeric indicating the number of hours between
 medication doses which will be counted as a new course, defaults to 36

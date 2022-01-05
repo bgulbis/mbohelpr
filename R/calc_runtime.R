@@ -18,10 +18,11 @@
 #' infusions.
 
 #' @param df A data frame
-#' @param .grp_var column names to group by, wrapped by dplyr::vars
 #' @param ... optional named arguments with column names; optional arguments
-#'   include: med, med_datetime, rate, and rate_unit; if not specified,
-#'   medication, med_datetime, rate, and rate_unit are used for column names
+#'   include: id, med, med_datetime, rate, and rate_unit; if not specified,
+#'   encntr_id, medication, med_datetime, rate, and rate_unit are used for
+#'   column names, respectively
+#' @param .grp_var additional columns to group by, uses \code{tidy_select}
 #' @param drip_off An optional numeric indicating the number of hours a
 #'   medication infusion should be off to count as a new infusion, defaults to
 #'   12 hours
@@ -34,18 +35,16 @@
 #' @return A data frame
 #'
 #' @export
-drip_runtime <- function(df, .grp_var, ..., drip_off = 12, no_doc = 24, units = "hours") {
+drip_runtime <- function(df, ..., .grp_var, drip_off = 12, no_doc = 24, units = "hours") {
     cols <- rlang::enquos(...)
 
-    # if ("id" %in% names(cols)) {
-    #     id <- cols$id
-    # } else {
-    #     id <- rlang::sym("encounter_id")
-    # }
+    if ("id" %in% names(cols)) {
+        id <- cols$id
+    } else {
+        id <- rlang::sym("encntr_id")
+    }
 
-    if ("medication" %in% names(cols)) {
-        med <- cols$medication
-    } else if ("med" %in% names(cols)) {
+    if ("med" %in% names(cols)) {
         med <- cols$med
     } else {
         med <- rlang::sym("medication")
@@ -53,30 +52,25 @@ drip_runtime <- function(df, .grp_var, ..., drip_off = 12, no_doc = 24, units = 
 
     if ("med_datetime" %in% names(cols)) {
         med_datetime <- cols$med_datetime
-    } else if ("dose_datetime" %in% names(cols)) {
-        med_datetime <- cols$dose_datetime
     } else {
         med_datetime <- rlang::sym("med_datetime")
     }
 
     if ("rate" %in% names(cols)) {
         rate <- cols$rate
-    } else if ("infusion_rate" %in% names(cols)) {
-        rate <- cols$infusion_rate
     } else {
         rate <- rlang::sym("rate")
     }
 
     if ("rate_unit" %in% names(cols)) {
         rate_unit <- cols$rate_unit
-    } else if ("infusion_unit" %in% names(cols)) {
-        rate_unit <- cols$infusion_unit
     } else {
         rate_unit <- rlang::sym("rate_unit")
     }
 
     change_num <- rlang::sym("change_num")
     rate_change <- rlang::sym("rate_change")
+    # rate_curr <- rlang::sym("rate_curr")
     rate_duration <- rlang::sym("rate_duration")
     rate_start <- rlang::sym("rate_start")
     rate_stop <- rlang::sym("rate_stop")
@@ -87,7 +81,7 @@ drip_runtime <- function(df, .grp_var, ..., drip_off = 12, no_doc = 24, units = 
     duration <- rlang::sym("duration")
 
     df_drip <- df |>
-        dplyr::group_by(!!!.grp_var, !!med) |>
+        dplyr::group_by(!!id, !!med, {{ .grp_var }}) |>
         dplyr::arrange(!!med_datetime, .by_group = TRUE) |>
 
         # determine if it's a valid rate documentation
@@ -97,7 +91,7 @@ drip_runtime <- function(df, .grp_var, ..., drip_off = 12, no_doc = 24, units = 
         ) |>
 
         # fill in missing rates
-        dplyr::group_by(!!!.grp_var, !!med, !!change_num) |>
+        dplyr::group_by(!!id, !!med, {{ .grp_var }}, !!change_num) |>
         dplyr::mutate(
             !!"rate" := dplyr::if_else(
                 is.na(!!rate_unit),
@@ -107,7 +101,7 @@ drip_runtime <- function(df, .grp_var, ..., drip_off = 12, no_doc = 24, units = 
         ) |>
 
         # calculate time between rows and order of rate changes
-        dplyr::group_by(!!!.grp_var, !!med) |>
+        dplyr::group_by(!!id, !!med, {{ .grp_var }}) |>
         dplyr::mutate(
             !!"time_next" := difftime(
                 dplyr::lead(!!med_datetime),
@@ -120,9 +114,10 @@ drip_runtime <- function(df, .grp_var, ..., drip_off = 12, no_doc = 24, units = 
         ) |>
 
         # calculate how long the drip was at each rate
-        dplyr::group_by(!!!.grp_var, !!med, !!change_num) |>
+        dplyr::group_by(!!id, !!med, {{ .grp_var }}, !!change_num) |>
         dplyr::summarize(
-            !!"rate" := dplyr::first(!!rate),
+            # !!"rate_curr" := dplyr::first(!!rate),
+            dplyr::across(!!rate, dplyr::first),
             !!"rate_start" := dplyr::first(!!med_datetime),
             !!"rate_stop" := dplyr::last(!!med_datetime),
             !!"rate_duration" := difftime(
@@ -134,22 +129,23 @@ drip_runtime <- function(df, .grp_var, ..., drip_off = 12, no_doc = 24, units = 
         ) |>
 
         # identify individual drips
-        dplyr::group_by(!!!.grp_var, !!med) |>
+        dplyr::group_by(!!id, !!med, {{ .grp_var }}) |>
         dplyr::mutate(
             !!"duration" := dplyr::if_else(
                 !!time_next < drip_off & !is.na(!!time_next),
                 !!rate_duration + !!time_next,
                 !!rate_duration
             ),
+            dplyr::across(!!duration, as.numeric),
             !!"drip_stop" := is.na(!!time_next) | !!time_next > no_doc |
                 (!!rate == 0 & !!duration > drip_off),
             !!"drip_start" := !!change_num == 1 | dplyr::lag(!!drip_stop),
             !!"drip_count" := cumsum(!!drip_start)
         ) |>
-        dplyr::mutate_at("duration", as.numeric) |>
+        # dplyr::mutate_at("duration", as.numeric) |>
 
         # calculate run time
-        dplyr::group_by(!!!.grp_var, !!med, !!drip_count) |>
+        dplyr::group_by(!!id, !!med, {{ .grp_var }}, !!drip_count) |>
         dplyr::mutate(
             !!"start_time" := difftime(
                 !!rate_start,
@@ -187,10 +183,11 @@ drip_runtime <- function(df, .grp_var, ..., drip_off = 12, no_doc = 24, units = 
     df_drip |>
         dplyr::ungroup() |>
         dplyr::bind_rows(drip_end) |>
-        dplyr::arrange(!!!.grp_var, !!med, !!drip_count, !!rate_start) |>
+        dplyr::arrange(!!id, !!med, {{ .grp_var }}, !!drip_count, !!rate_start) |>
         dplyr::distinct(
-            !!!.grp_var,
+            !!id,
             !!med,
+            {{ .grp_var }},
             !!drip_count,
             !!rlang::sym("start_time"),
             .keep_all = TRUE
@@ -214,10 +211,10 @@ drip_runtime <- function(df, .grp_var, ..., drip_off = 12, no_doc = 24, units = 
 #' courses.
 
 #' @param df A data frame
-#' @param .grp_var column names to group by, wrapped by dplyr::vars
 #' @param ... optional named arguments with column names; optional arguments
-#'   are: med, med_datetime, and dose; if not specified, medication,
-#'   med_datetime, and dose are used for column names
+#'   are: id, med, med_datetime, and dose; if not specified, encntr_id, medication,
+#'   med_datetime, and dose are used for column names, respectively
+#' @param .grp_var column names to group by, uses \code{tidy_select}
 #' @param med_off An optional numeric indicating the number of hours between
 #'   medication doses which will be counted as a new course, defaults to 36
 #'   hours
@@ -230,18 +227,16 @@ drip_runtime <- function(df, .grp_var, ..., drip_off = 12, no_doc = 24, units = 
 #' @return A data frame
 #'
 #' @export
-med_runtime <- function(df, .grp_var, ..., med_off = 24, no_doc = 24, units = "hours") {
+med_runtime <- function(df, ..., .grp_var, med_off = 24, no_doc = 24, units = "hours") {
     cols <- rlang::enquos(...)
 
-    # if ("id" %in% names(cols)) {
-    #     id <- cols$id
-    # } else {
-    #     id <- rlang::sym("encounter_id")
-    # }
+    if ("id" %in% names(cols)) {
+        id <- cols$id
+    } else {
+        id <- rlang::sym("encntr_id")
+    }
 
-    if ("medication" %in% names(cols)) {
-        med <- cols$medication
-    } else if ("med" %in% names(cols)) {
+    if ("med" %in% names(cols)) {
         med <- cols$med
     } else {
         med <- rlang::sym("medication")
@@ -249,16 +244,12 @@ med_runtime <- function(df, .grp_var, ..., med_off = 24, no_doc = 24, units = "h
 
     if ("med_datetime" %in% names(cols)) {
         med_datetime <- cols$med_datetime
-    } else if ("dose_datetime" %in% names(cols)) {
-        med_datetime <- cols$dose_datetime
     } else {
         med_datetime <- rlang::sym("med_datetime")
     }
 
     if ("dose" %in% names(cols)) {
         dose <- cols$dose
-    } else if ("admin_dosage" %in% names(cols)) {
-        dose <- cols$admin_dosage
     } else {
         dose <- rlang::sym("dose")
     }
@@ -267,7 +258,7 @@ med_runtime <- function(df, .grp_var, ..., med_off = 24, no_doc = 24, units = "h
     dose_change <- rlang::sym("dose_change")
     time_next <- rlang::sym("time_next")
     num_doses <- rlang::sym("num_doses")
-    curr_dose <- rlang::sym("curr_dose")
+    # curr_dose <- rlang::sym("curr_dose")
     dose_start <- rlang::sym("dose_start")
     dose_stop <- rlang::sym("dose_stop")
     dose_duration <- rlang::sym("dose_duration")
@@ -277,7 +268,7 @@ med_runtime <- function(df, .grp_var, ..., med_off = 24, no_doc = 24, units = "h
     duration <- rlang::sym("duration")
 
     df_meds <- df |>
-        dplyr::group_by(!!!.grp_var, !!med) |>
+        dplyr::group_by(!!id, !!med, {{ .grp_var }}) |>
         dplyr::arrange(!!med_datetime, .by_group = TRUE) |>
 
         # calculate time between rows and order of dose changes
@@ -293,10 +284,11 @@ med_runtime <- function(df, .grp_var, ..., med_off = 24, no_doc = 24, units = "h
         ) |>
 
         # calculate how long the med was at each dose
-        dplyr::group_by(!!!.grp_var, !!med, !!change_num) |>
+        dplyr::group_by(!!id, !!med, {{ .grp_var }}, !!change_num) |>
         dplyr::summarize(
             !!"num_doses" := dplyr::n(),
-            !!"curr_dose" := dplyr::first(!!dose),
+            dplyr::across(!!dose, dplyr::first),
+            # !!"curr_dose" := dplyr::first(!!dose),
             !!"dose_start" := dplyr::first(!!med_datetime),
             !!"dose_stop" := dplyr::last(!!med_datetime),
             !!"dose_duration" := difftime(
@@ -308,22 +300,22 @@ med_runtime <- function(df, .grp_var, ..., med_off = 24, no_doc = 24, units = "h
         ) |>
 
         # identify individual courses of therapy
-        dplyr::group_by(!!!.grp_var, !!med) |>
+        dplyr::group_by(!!id, !!med, {{ .grp_var }}) |>
         dplyr::mutate(
             !!"duration" := dplyr::if_else(
                 !!time_next <= med_off & !is.na(!!time_next),
                 !!dose_duration + !!time_next,
                 !!dose_duration
             ),
+            dplyr::across(!!duration, as.numeric),
             !!"course_stop" := is.na(!!time_next) | !!time_next > med_off |
-                (!!curr_dose == 0 & !!duration > no_doc),
+                (!!dose == 0 & !!duration > no_doc),
             !!"course_start" := !!change_num == 1 | dplyr::lag(!!course_stop),
-            !!"course_count" := cumsum(!!course_start),
-            dplyr::across(!!duration, as.numeric)
+            !!"course_count" := cumsum(!!course_start)
         ) |>
 
         # calculate run time
-        dplyr::group_by(!!!.grp_var, !!med, !!course_count) |>
+        dplyr::group_by(!!id, !!med, {{ .grp_var }}, !!course_count) |>
         dplyr::mutate(
             !!"start_time" := difftime(
                 !!dose_start,
@@ -340,7 +332,7 @@ med_runtime <- function(df, .grp_var, ..., med_off = 24, no_doc = 24, units = "h
             -!!course_stop,
             -!!change_num
         ) |>
-        dplyr::rename(!!"dose" := !!curr_dose) |>
+        # dplyr::rename(!!"dose" := !!curr_dose) |>
         dplyr::ungroup()
 
     # update drip stop information if rate of last row isn't 0
@@ -384,22 +376,24 @@ med_runtime <- function(df, .grp_var, ..., med_off = 24, no_doc = 24, units = "h
 #' time.
 
 #' @param df A data frame
-#' @param .grp_var column names to group by, wrapped by dplyr::vars
-#' @param ... optional named arguments with column names
+#' @param ... optional named arguments with column names; optional arguments
+#'   are: id, event, and event_datetime; if not specified, encntr_id, event, and
+#'   event_datetime are used for column names, respectively
+#' @param .grp_var column names to group by, uses \code{tidy_select}
 #' @param units An optional character string specifying the time units to use in
 #'   calculations, default is hours
 #'
 #' @return A data frame
 #'
 #' @export
-calc_runtime <- function(df, .grp_var, ..., units = "hours") {
+calc_runtime <- function(df, ..., .grp_var, units = "hours") {
     cols <- rlang::enquos(...)
 
-    # if ("id" %in% names(cols)) {
-    #     id <- cols$id
-    # } else {
-    #     id <- rlang::sym("encounter_id")
-    # }
+    if ("id" %in% names(cols)) {
+        id <- cols$id
+    } else {
+        id <- rlang::sym("encntr_id")
+    }
 
     if ("event" %in% names(cols)) {
         event <- cols$event
@@ -413,8 +407,14 @@ calc_runtime <- function(df, .grp_var, ..., units = "hours") {
         event_datetime <- rlang::sym("event_datetime")
     }
 
+    # if ("result" %in% names(cols)) {
+    #     result <- cols$result
+    # } else {
+    #     result <- rlang::sym("result")
+    # }
+
     df |>
-        dplyr::group_by(!!!.grp_var, !!event) |>
+        dplyr::group_by(!!id, !!event, {{ .grp_var }}) |>
         dplyr::arrange(!!event_datetime, .by_group = TRUE) |>
         dplyr::mutate(
             !!"duration" := difftime(
@@ -432,8 +432,9 @@ calc_runtime <- function(df, .grp_var, ..., units = "hours") {
         ) |>
         dplyr::ungroup() |>
         dplyr::distinct(
-            !!!.grp_var,
+            !!id,
             !!event,
+            {{ .grp_var }},
             !!rlang::sym("start_time"),
             .keep_all = TRUE
         )
