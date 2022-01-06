@@ -73,7 +73,10 @@ summarize_drips <- function(df, ..., .id = encntr_id, .med = medication,
         dplyr::group_by({{ .id }}, {{ .med }}, ..., !!drip_count) |>
         dplyr::mutate(!!"time_wt_avg_rate" := !!auc_val / !!duration) |>
         dplyr::ungroup() |>
-        dplyr::rename(!!"infusion_run_time" := !!start_time)
+        dplyr::rename(
+            !!"infusion_run_time" := !!start_time,
+            !!"auc" := !!auc_val
+        )
 }
 
 
