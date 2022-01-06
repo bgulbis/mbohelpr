@@ -62,13 +62,13 @@ summarize_drips <- function(df, ..., .id = encntr_id, .med = medication,
         # join the last and min data, then calculate the time-weighted average
         # and interval
         dplyr::inner_join(
-            nz_rate
-            # by = c(
-            #     rlang::as_name(id),
-            #     rlang::as_name(med),
-            #     purrr::map_chr(.grp_var, rlang::as_name),
-            #     "drip_count"
-            # )
+            nz_rate,
+            by = c(
+                rlang::as_name(rlang::enquo(.id)),
+                rlang::as_name(rlang::enquo(.med)),
+                purrr::map_chr(rlang::enquos(...), rlang::as_name),
+                "drip_count"
+            )
         ) |>
         dplyr::group_by({{ .id }}, {{ .med }}, ..., !!drip_count) |>
         dplyr::mutate(!!"time_wt_avg_rate" := !!auc_val / !!duration) |>
@@ -78,8 +78,6 @@ summarize_drips <- function(df, ..., .id = encntr_id, .med = medication,
             !!"auc" := !!auc_val
         )
 }
-
-
 
 #' Summarize home meds
 #'
