@@ -176,6 +176,7 @@ med_runtime <- function(df, ..., .id = encntr_id, .med = medication,
     course_stop <- rlang::sym("course_stop")
     course_count <- rlang::sym("course_count")
     duration <- rlang::sym("duration")
+    start_time <- rlang::sym("start_time")
 
     df_meds <- df |>
         dplyr::group_by({{ .id }}, {{ .med }}, ...) |>
