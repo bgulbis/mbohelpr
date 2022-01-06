@@ -4,28 +4,42 @@
 \alias{drip_runtime}
 \title{Calculate the running time for continuous infusion data}
 \usage{
-drip_runtime(df, ..., .grp_var, drip_off = 12, no_doc = 24, units = "hours")
+drip_runtime(
+  df,
+  ...,
+  .id = encntr_id,
+  .med = medication,
+  .dt_tm = med_datetime,
+  .rate = rate,
+  .rate_unit = rate_unit,
+  .drip_off = 12,
+  .no_doc = 24,
+  .units = "hours"
+)
 }
 \arguments{
 \item{df}{A data frame}
 
-\item{...}{optional named arguments with column names; optional arguments
-include: id, med, med_datetime, rate, and rate_unit; if not specified,
-encntr_id, medication, med_datetime, rate, and rate_unit are used for
-column names, respectively}
+\item{...}{Optional columns to group by}
 
-\item{.grp_var}{additional columns to group by, uses \code{tidy_select}}
+\item{.id}{Patient identifier column, defaults to encntr_id}
 
-\item{drip_off}{An optional numeric indicating the number of hours a
-medication infusion should be off to count as a new infusion, defaults to
-12 hours}
+\item{.med}{Medication column, defaults to medication}
 
-\item{no_doc}{An optional numeric indicating the number of hours without
-documentation which will be used to indicate a drip has ended, defaults to
-24 hours}
+\item{.dt_tm}{Date/time column, defaults to med_datetime}
 
-\item{units}{An optional character string specifying the time units to use in
-calculations, default is hours}
+\item{.rate}{Infusion rate column, defaults to rate}
+
+\item{.rate_unit}{Infusion rate units column, defaults to rate_unit}
+
+\item{.drip_off}{Number of hours a medication infusion should be off to count
+as a new infusion, defaults to 12 hours}
+
+\item{.no_doc}{Number of hours without documentation which will be used to
+indicate a drip has ended, defaults to 24 hours}
+
+\item{.units}{A string specifying the time units to use in calculations,
+default is "hours"}
 }
 \value{
 A data frame
@@ -44,6 +58,6 @@ data.
 
 The data will be grouped into distinct sets of infusions, for patients who
 may have been restarted on the drip one or more times. Use the
-\code{drip_off} argument to modify the criteria for determining distinct
+\code{.drip_off} argument to modify the criteria for determining distinct
 infusions.
 }

@@ -4,14 +4,16 @@
 \alias{summarize_drips}
 \title{Summary calculations for continuous infusion data}
 \usage{
-summarize_drips(df, .grp_var, ..., units = "hours")
+summarize_drips(df, ..., .grp_var, units = "hours")
 }
 \arguments{
 \item{df}{A data frame with continuous data}
 
-\item{.grp_var}{column names to group by, wrapped by dplyr::vars}
+\item{...}{optional named arguments with column names; optional arguments
+include: id, med, and rate; if not specified, encntr_id, medication, and
+rate are used for column names, respectively}
 
-\item{...}{optional named arguments with column names}
+\item{.grp_var}{additional columns to group by, uses \code{tidy_select}}
 
 \item{units}{An optional character string specifying the time units to use in
 calculations, default is hours}

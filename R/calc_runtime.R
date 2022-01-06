@@ -14,63 +14,33 @@
 #'
 #' The data will be grouped into distinct sets of infusions, for patients who
 #' may have been restarted on the drip one or more times. Use the
-#' \code{drip_off} argument to modify the criteria for determining distinct
+#' \code{.drip_off} argument to modify the criteria for determining distinct
 #' infusions.
 
 #' @param df A data frame
-#' @param ... optional named arguments with column names; optional arguments
-#'   include: id, med, med_datetime, rate, and rate_unit; if not specified,
-#'   encntr_id, medication, med_datetime, rate, and rate_unit are used for
-#'   column names, respectively
-#' @param .grp_var additional columns to group by, uses \code{tidy_select}
-#' @param drip_off An optional numeric indicating the number of hours a
-#'   medication infusion should be off to count as a new infusion, defaults to
-#'   12 hours
-#' @param no_doc An optional numeric indicating the number of hours without
-#'   documentation which will be used to indicate a drip has ended, defaults to
-#'   24 hours
-#' @param units An optional character string specifying the time units to use in
-#'   calculations, default is hours
+#' @param ... Optional columns to group by
+#' @param .id Patient identifier column, defaults to encntr_id
+#' @param .med Medication column, defaults to medication
+#' @param .dt_tm Date/time column, defaults to med_datetime
+#' @param .rate Infusion rate column, defaults to rate
+#' @param .rate_unit Infusion rate units column, defaults to rate_unit
+#' @param .drip_off Number of hours a medication infusion should be off to count
+#'   as a new infusion, defaults to 12 hours
+#' @param .no_doc Number of hours without documentation which will be used to
+#'   indicate a drip has ended, defaults to 24 hours
+#' @param .units A string specifying the time units to use in calculations,
+#'   default is "hours"
 #'
 #' @return A data frame
 #'
 #' @export
-drip_runtime <- function(df, ..., .grp_var, drip_off = 12, no_doc = 24, units = "hours") {
-    cols <- rlang::enquos(...)
-
-    if ("id" %in% names(cols)) {
-        id <- cols$id
-    } else {
-        id <- rlang::sym("encntr_id")
-    }
-
-    if ("med" %in% names(cols)) {
-        med <- cols$med
-    } else {
-        med <- rlang::sym("medication")
-    }
-
-    if ("med_datetime" %in% names(cols)) {
-        med_datetime <- cols$med_datetime
-    } else {
-        med_datetime <- rlang::sym("med_datetime")
-    }
-
-    if ("rate" %in% names(cols)) {
-        rate <- cols$rate
-    } else {
-        rate <- rlang::sym("rate")
-    }
-
-    if ("rate_unit" %in% names(cols)) {
-        rate_unit <- cols$rate_unit
-    } else {
-        rate_unit <- rlang::sym("rate_unit")
-    }
+drip_runtime <- function(df, ..., .id = encntr_id, .med = medication,
+                         .dt_tm = med_datetime, .rate = rate,
+                         .rate_unit = rate_unit, .drip_off = 12, .no_doc = 24,
+                         .units = "hours") {
 
     change_num <- rlang::sym("change_num")
     rate_change <- rlang::sym("rate_change")
-    # rate_curr <- rlang::sym("rate_curr")
     rate_duration <- rlang::sym("rate_duration")
     rate_start <- rlang::sym("rate_start")
     rate_stop <- rlang::sym("rate_stop")
@@ -79,102 +49,72 @@ drip_runtime <- function(df, ..., .grp_var, drip_off = 12, no_doc = 24, units = 
     drip_stop <- rlang::sym("drip_stop")
     drip_count <- rlang::sym("drip_count")
     duration <- rlang::sym("duration")
+    start_time <- rlang::sym("start_time")
 
     df_drip <- df |>
-        dplyr::group_by(!!id, !!med, {{ .grp_var }}) |>
-        dplyr::arrange(!!med_datetime, .by_group = TRUE) |>
+        dplyr::group_by({{ .id }}, {{ .med }}, ...) |>
+        dplyr::arrange({{ .dt_tm }}, .by_group = TRUE) |>
 
         # determine if it's a valid rate documentation
         dplyr::mutate(
-            !!"rate_change" := !is.na(!!rate_unit),
-            !!"change_num" := cumsum(!!rate_change)
+            dplyr::across({{ .rate }}, ~dplyr::if_else(is.na({{ .rate_unit }}), NA_real_, .))
         ) |>
 
         # fill in missing rates
-        dplyr::group_by(!!id, !!med, {{ .grp_var }}, !!change_num) |>
-        dplyr::mutate(
-            !!"rate" := dplyr::if_else(
-                is.na(!!rate_unit),
-                dplyr::first(!!rate),
-                !!rate
-            )
-        ) |>
+        tidyr::fill({{ .rate }}, .direction = "down") |>
 
         # calculate time between rows and order of rate changes
-        dplyr::group_by(!!id, !!med, {{ .grp_var }}) |>
         dplyr::mutate(
-            !!"time_next" := difftime(
-                dplyr::lead(!!med_datetime),
-                !!med_datetime,
-                units = units
-            ),
-            !!"rate_change" := is.na(dplyr::lag(!!rate)) |
-                rate != dplyr::lag(!!rate),
+            !!"time_next" := difftime(dplyr::lead({{ .dt_tm }}), {{ .dt_tm }}, units = .units),
+            !!"rate_change" := is.na(dplyr::lag({{ .rate }})) | {{ .rate }} != dplyr::lag({{ .rate }}),
             !!"change_num" := cumsum(!!rate_change)
         ) |>
 
         # calculate how long the drip was at each rate
-        dplyr::group_by(!!id, !!med, {{ .grp_var }}, !!change_num) |>
+        dplyr::group_by({{ .id }}, {{ .med }}, ..., !!change_num) |>
         dplyr::summarize(
-            # !!"rate_curr" := dplyr::first(!!rate),
-            dplyr::across(!!rate, dplyr::first),
-            !!"rate_start" := dplyr::first(!!med_datetime),
-            !!"rate_stop" := dplyr::last(!!med_datetime),
-            !!"rate_duration" := difftime(
-                dplyr::last(!!med_datetime),
-                dplyr::first(!!med_datetime),
-                units = units
-            ),
-            !!"time_next" := dplyr::last(!!time_next)
+            dplyr::across({{ .rate }}, dplyr::first),
+            !!"rate_start" := dplyr::first({{ .dt_tm }}),
+            !!"rate_stop" := dplyr::last({{ .dt_tm }}),
+            !!"rate_duration" := difftime(!!rate_stop, !!rate_start, units = .units),
+            dplyr::across(!!time_next, dplyr::last)
         ) |>
 
         # identify individual drips
-        dplyr::group_by(!!id, !!med, {{ .grp_var }}) |>
+        dplyr::group_by({{ .id }}, {{ .med }}, ...) |>
         dplyr::mutate(
             !!"duration" := dplyr::if_else(
-                !!time_next < drip_off & !is.na(!!time_next),
+                !!time_next < .drip_off & !is.na(!!time_next),
                 !!rate_duration + !!time_next,
                 !!rate_duration
             ),
             dplyr::across(!!duration, as.numeric),
-            !!"drip_stop" := is.na(!!time_next) | !!time_next > no_doc |
-                (!!rate == 0 & !!duration > drip_off),
+            !!"drip_stop" := is.na(!!time_next) | !!time_next > .no_doc | ({{ .rate }} == 0 & !!duration > .drip_off),
             !!"drip_start" := !!change_num == 1 | dplyr::lag(!!drip_stop),
             !!"drip_count" := cumsum(!!drip_start)
         ) |>
-        # dplyr::mutate_at("duration", as.numeric) |>
 
         # calculate run time
-        dplyr::group_by(!!id, !!med, {{ .grp_var }}, !!drip_count) |>
+        dplyr::group_by({{ .id }}, {{ .med }}, ..., !!drip_count) |>
         dplyr::mutate(
-            !!"start_time" := difftime(
-                !!rate_start,
-                dplyr::first(!!rate_start),
-                units = units
-            )
+            !!"start_time" := difftime(!!rate_start, dplyr::first(!!rate_start), units = .units)
         ) |>
 
         # remove unnecessary columns
-        dplyr::select(
-            -!!rate_duration,
-            -!!time_next,
-            -!!drip_start,
-            -!!drip_stop,
-            -!!change_num
-        )
+        dplyr::select(-!!rate_duration, -!!time_next, -!!drip_start, -!!drip_stop, -!!change_num)
 
     # update drip stop information if rate of last row isn't 0
     drip_end <- df_drip |>
         dplyr::filter(
             !!rate_stop == dplyr::last(!!rate_stop),
-            !!rate > 0
+            {{ .rate }} > 0
         ) |>
 
         # calculate the run time for the last drip row
         dplyr::mutate(
-            !!"start_time" := !!duration + !!rlang::sym("start_time"),
-            !!"rate_start" := !!rate_stop,
-            !!"duration" := 0
+            across(!!start_time, ~ . + !!duration),
+            across(c({{ .rate }}, !!duration), ~ 0),
+            across(!!rate_start, ~ !!rate_stop)
         ) |>
         dplyr::ungroup()
 
@@ -183,15 +123,8 @@ drip_runtime <- function(df, ..., .grp_var, drip_off = 12, no_doc = 24, units = 
     df_drip |>
         dplyr::ungroup() |>
         dplyr::bind_rows(drip_end) |>
-        dplyr::arrange(!!id, !!med, {{ .grp_var }}, !!drip_count, !!rate_start) |>
-        dplyr::distinct(
-            !!id,
-            !!med,
-            {{ .grp_var }},
-            !!drip_count,
-            !!rlang::sym("start_time"),
-            .keep_all = TRUE
-        )
+        dplyr::arrange({{ .id }}, {{ .med }}, ..., !!drip_count, !!rate_start) |>
+        dplyr::distinct({{ .id }}, {{ .med }}, ..., !!drip_count, !!start_time, .keep_all = TRUE)
 }
 
 #' Calculate the running time for intermittent medication data

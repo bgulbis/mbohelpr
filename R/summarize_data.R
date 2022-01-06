@@ -11,27 +11,29 @@
 #' duration, total infusion running time, and cumulative dose.
 #'
 #' @param df A data frame with continuous data
-#' @param .grp_var column names to group by, wrapped by dplyr::vars
-#' @param ... optional named arguments with column names
+#' @param ... optional named arguments with column names; optional arguments
+#'   include: id, med, and rate; if not specified, encntr_id, medication, and
+#'   rate are used for column names, respectively
+#' @param .grp_var additional columns to group by, uses \code{tidy_select}
 #' @param units An optional character string specifying the time units to use in
 #'   calculations, default is hours
 #'
 #' @return A data frame
 #'
 #' @export
-summarize_drips <- function(df, .grp_var, ..., units = "hours") {
+summarize_drips <- function(df, ..., .grp_var, units = "hours") {
     # turn off scientific notation
     options(scipen = 999)
 
     cols <- rlang::enquos(...)
 
-    # if ("id" %in% names(cols)) {
-    #     id <- cols$id
-    # } else {
-    #     id <- rlang::sym("encounter_id")
-    # }
+    if ("id" %in% names(cols)) {
+        id <- cols$id
+    } else {
+        id <- rlang::sym("encntr_id")
+    }
 
-    if ("medication" %in% names(cols)) {
+    if ("med" %in% names(cols)) {
         med <- cols$medication
     } else {
         med <- rlang::sym("medication")
@@ -43,29 +45,32 @@ summarize_drips <- function(df, .grp_var, ..., units = "hours") {
         rate <- rlang::sym("rate")
     }
 
-    grp_by <- quos(!!!.grp_var, !!med, !!rlang::sym("drip_count"))
+    # grp_by <- quos(!!!.grp_var, !!med, !!rlang::sym("drip_count"))
+    drip_count <- rlang::sym("drip_count")
     start_time <- rlang::sym("start_time")
     rate_start <- rlang::sym("rate_start")
     duration <- rlang::sym("duration")
 
-    # cont <- x %>%
-    #     group_by(!!!grp_by) %>%
+    # cont <- x |>
+    #     group_by(!!!grp_by) |>
     #     filter(!!run.time > 0)
 
     # get last and min non-zero rate
-    nz_rate <- df %>%
-        group_by(!!!grp_by) %>%
-        filter(!!rate > 0) %>%
-        summarize(
+    nz_rate <- df |>
+        dplyr::group_by(!!id, !!med, {{ .grp_var }}, !!drip_count) |>
+        dplyr::filter(!!rate > 0) |>
+        dplyr::summarize(
             !!"last_rate" := dplyr::last(!!rate),
             !!"min_rate" := min(!!rate, na.rm = TRUE),
             !!"start_time" := sum(!!duration, na.rm = TRUE)
         )
 
+    # grp_df <- dplyr::group_by(df, !!id, !!med, {{ .grp_var }}, !!drip_count)
+
     # get first and max rates and AUC
-    df %>%
-        group_by(!!!grp_by) %>%
-        summarize(
+    df |>
+        dplyr::group_by(!!id, !!med, {{ .grp_var }}, !!drip_count) |>
+        dplyr::summarize(
             !!"start_datetime" := dplyr::first(!!rate_start),
             !!"stop_datetime" := dplyr::if_else(
                 dplyr::last(!!rate) == 0,
@@ -74,25 +79,33 @@ summarize_drips <- function(df, .grp_var, ..., units = "hours") {
             ),
             !!"cum_dose" := sum(!!rate * !!duration, na.rm = TRUE),
             !!"first_rate" := dplyr::first(!!rate),
+            # !!"last_rate" := dplyr::last(filter(grp_df, !!rate > 0) |> pull(!!rate)),
+            # !!"min_rate" := min(filter(grp_df, !!rate > 0) |> pull(!!rate), na.rm = TRUE),
             !!"max_rate" := max(!!rate, na.rm = TRUE),
             !!"auc" := MESS::auc(!!start_time, !!rate),
             !!"duration" := dplyr::last(!!start_time)
-        ) %>%
+            # !!"infusion_run_time" := sum(filter(grp_df, !!rate > 0) |> pull(!!duration), na.rm = TRUE)
+            # dplyr::across(!!duration, as.numeric)
+        ) |>
         # join the last and min data, then calculate the time-weighted average
         # and interval
-        inner_join(
-            nz_rate,
-            by = c(
-                purrr::map_chr(.grp_var, rlang::as_name),
-                "medication",
-                "drip_count"
-            )
-        ) %>%
-        group_by(!!!grp_by) %>%
-        dplyr::mutate_at("duration", as.numeric) %>%
-        mutate(!!"time_wt_avg_rate" := !!rlang::sym("auc") / !!duration) %>%
-        ungroup() %>%
-        rename(!!"infusion_run_time" := !!start_time)
+        dplyr::inner_join(
+            nz_rate
+            # by = c(
+            #     rlang::as_name(id),
+            #     rlang::as_name(med),
+            #     purrr::map_chr(.grp_var, rlang::as_name),
+            #     "drip_count"
+            # )
+        ) |>
+        dplyr::group_by(!!id, !!med, {{ .grp_var }}, !!drip_count) |>
+        # dplyr::mutate_at("duration", as.numeric) |>
+        dplyr::mutate(
+            dplyr::across(!!duration, as.numeric),
+            !!"time_wt_avg_rate" := !!rlang::sym("auc") / !!duration
+        ) |>
+        dplyr::ungroup() |>
+        dplyr::rename(!!"infusion_run_time" := !!start_time)
 }
 
 
@@ -133,23 +146,23 @@ summarize_home_meds <- function(x, ..., ref, pts = NULL, home = TRUE) {
         f <- parse_expr("med.type == 'Prescription / Discharge Order'")
     }
 
-    df <- x %>%
+    df <- x |>
         filter(
             !!f,
             !!parse_expr("med %in% lookup.meds")
-        ) %>%
-        left_join(meds, by = c("med" = "med.name")) %>%
+        ) |>
+        left_join(meds, by = c("med" = "med.name")) |>
         mutate(
             !!"group" := !!parse_expr("dplyr::if_else(is.na(med.class), med, med.class)"),
             !!"value" := TRUE
-        ) %>%
-        distinct(!!!quos(!!id, !!sym("group"), !!sym("value"))) %>%
+        ) |>
+        distinct(!!!quos(!!id, !!sym("group"), !!sym("value"))) |>
         tidyr::spread(!!sym("group"), !!sym("value"), fill = FALSE, drop = FALSE)
 
     # join with list of all patients, fill in values of FALSE for any patients
     # not in the data set
     if (!is.null(pts)) {
-        df <- reclass(x, df) %>%
+        df <- reclass(x, df) |>
             add_patients(pts)
     }
 
@@ -202,9 +215,9 @@ summarize_data <- function(df, .grp_var, ...) {
         result <- rlang::sym("result")
     }
 
-    df %>%
-        dplyr::add_count(!!!.grp_var, !!event) %>%
-        group_by(!!!.grp_var, !!event, !!rlang::sym("n")) %>%
+    df |>
+        dplyr::add_count(!!!.grp_var, !!event) |>
+        group_by(!!!.grp_var, !!event, !!rlang::sym("n")) |>
         summarize(
             !!"first_datetime" := dplyr::first(!!event_datetime),
             !!"last_datetime" := dplyr::last(!!event_datetime),
@@ -216,9 +229,9 @@ summarize_data <- function(df, .grp_var, ...) {
             !!"min_result" := min(!!result, na.rm = TRUE),
             !!"auc" := MESS::auc(!!rlang::sym("start_time"), !!result),
             !!"duration" := dplyr::last(!!rlang::sym("start_time"))
-        ) %>%
-        group_by(!!!.grp_var, !!event) %>%
-        dplyr::mutate_at("duration", as.numeric) %>%
-        mutate(!!"time_wt_avg" := !!rlang::sym("auc") / !!rlang::sym("duration")) %>%
+        ) |>
+        group_by(!!!.grp_var, !!event) |>
+        dplyr::mutate_at("duration", as.numeric) |>
+        mutate(!!"time_wt_avg" := !!rlang::sym("auc") / !!rlang::sym("duration")) |>
         ungroup()
 }
