@@ -98,7 +98,8 @@ drip_runtime <- function(df, ..., .id = encntr_id, .med = medication,
         # calculate run time
         dplyr::group_by({{ .id }}, {{ .med }}, ..., !!drip_count) |>
         dplyr::mutate(
-            !!"start_time" := difftime(!!rate_start, dplyr::first(!!rate_start), units = .units)
+            !!"start_time" := difftime(!!rate_start, dplyr::first(!!rate_start), units = .units),
+            dplyr::across(!!start_time, as.numeric)
         ) |>
 
         # remove unnecessary columns
@@ -114,7 +115,7 @@ drip_runtime <- function(df, ..., .id = encntr_id, .med = medication,
         # calculate the run time for the last drip row
         dplyr::mutate(
             across(!!start_time, ~ . + !!duration),
-            across(c({{ .rate }}, !!duration), ~ 0),
+            across(!!duration, ~ 0),
             across(!!rate_start, ~ !!rate_stop)
         ) |>
         dplyr::ungroup()
@@ -216,7 +217,8 @@ med_runtime <- function(df, ..., .id = encntr_id, .med = medication,
         # calculate run time
         dplyr::group_by({{ .id }}, {{ .med }}, ..., !!course_count) |>
         dplyr::mutate(
-            !!"start_time" := difftime(!!dose_start, dplyr::first(!!dose_start), units = .units)
+            !!"start_time" := difftime(!!dose_start, dplyr::first(!!dose_start), units = .units),
+            dplyr::across(!!start_time, as.numeric)
         ) |>
 
         # remove unnecessary columns
