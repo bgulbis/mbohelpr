@@ -89,7 +89,8 @@ drip_runtime <- function(df, ..., .id = encntr_id, .med = medication,
                 !!rate_duration
             ),
             dplyr::across(!!duration, as.numeric),
-            !!"drip_stop" := is.na(!!time_next) | !!time_next > .no_doc | ({{ .rate }} == 0 & !!duration > .drip_off),
+            !!"drip_stop" := is.na(!!time_next) | !!time_next > .no_doc |
+                ({{ .rate }} == 0 & !!duration > .drip_off),
             !!"drip_start" := !!change_num == 1 | dplyr::lag(!!drip_stop),
             !!"drip_count" := cumsum(!!drip_start)
         ) |>
@@ -144,54 +145,29 @@ drip_runtime <- function(df, ..., .id = encntr_id, .med = medication,
 #' courses.
 
 #' @param df A data frame
-#' @param ... optional named arguments with column names; optional arguments
-#'   are: id, med, med_datetime, and dose; if not specified, encntr_id, medication,
-#'   med_datetime, and dose are used for column names, respectively
-#' @param .grp_var column names to group by, uses \code{tidy_select}
-#' @param med_off An optional numeric indicating the number of hours between
-#'   medication doses which will be counted as a new course, defaults to 36
-#'   hours
-#' @param no_doc An optional numeric indicating the number of hours without
-#'   documentation which will be used to indicate a course has ended, defaults
-#'   to 24 hours
-#' @param units An optional character string specifying the time units to use in
-#'   calculations, default is hours
+#' @param ... Optional columns to group by
+#' @param .id Patient identifier column, defaults to encntr_id
+#' @param .med Medication column, defaults to medication
+#' @param .dt_tm Date/time column, defaults to med_datetime
+#' @param .dose Dose column, defaults to dose
+#' @param .med_off Number of hours between medication doses which will be
+#'   counted as a new course, defaults to 36 hours
+#' @param .no_doc Number of hours without documentation which will be used to
+#'   indicate a course has ended, defaults to 24 hours
+#' @param .units A string specifying the time units to use in calculations,
+#'   default is "hours"
 #'
 #' @return A data frame
 #'
 #' @export
-med_runtime <- function(df, ..., .grp_var, med_off = 24, no_doc = 24, units = "hours") {
-    cols <- rlang::enquos(...)
+med_runtime <- function(df, ..., .id = encntr_id, .med = medication,
+                        .dt_tm = med_datetime, .dose = dose, .med_off = 36,
+                        .no_doc = 24, .units = "hours") {
 
-    if ("id" %in% names(cols)) {
-        id <- cols$id
-    } else {
-        id <- rlang::sym("encntr_id")
-    }
-
-    if ("med" %in% names(cols)) {
-        med <- cols$med
-    } else {
-        med <- rlang::sym("medication")
-    }
-
-    if ("med_datetime" %in% names(cols)) {
-        med_datetime <- cols$med_datetime
-    } else {
-        med_datetime <- rlang::sym("med_datetime")
-    }
-
-    if ("dose" %in% names(cols)) {
-        dose <- cols$dose
-    } else {
-        dose <- rlang::sym("dose")
-    }
-
-    change_num <- rlang::sym("change_num")
-    dose_change <- rlang::sym("dose_change")
     time_next <- rlang::sym("time_next")
+    dose_change <- rlang::sym("dose_change")
+    change_num <- rlang::sym("change_num")
     num_doses <- rlang::sym("num_doses")
-    # curr_dose <- rlang::sym("curr_dose")
     dose_start <- rlang::sym("dose_start")
     dose_stop <- rlang::sym("dose_stop")
     dose_duration <- rlang::sym("dose_duration")
@@ -201,60 +177,46 @@ med_runtime <- function(df, ..., .grp_var, med_off = 24, no_doc = 24, units = "h
     duration <- rlang::sym("duration")
 
     df_meds <- df |>
-        dplyr::group_by(!!id, !!med, {{ .grp_var }}) |>
-        dplyr::arrange(!!med_datetime, .by_group = TRUE) |>
+        dplyr::group_by({{ .id }}, {{ .med }}, ...) |>
+        dplyr::arrange({{ .dt_tm }}, .by_group = TRUE) |>
 
         # calculate time between rows and order of dose changes
         dplyr::mutate(
-            !!"time_next" := difftime(
-                dplyr::lead(!!med_datetime),
-                !!med_datetime,
-                units = units
-            ),
-            !!"dose_change" := is.na(dplyr::lag(!!dose)) |
-                !!dose != dplyr::lag(!!dose),
+            !!"time_next" := difftime(dplyr::lead({{ .dt_tm }}), {{ .dt_tm }}, units = .units),
+            !!"dose_change" := is.na(dplyr::lag({{ .dose }})) | {{ .dose }} != dplyr::lag({{ .dose }}),
             !!"change_num" := cumsum(!!dose_change)
         ) |>
 
         # calculate how long the med was at each dose
-        dplyr::group_by(!!id, !!med, {{ .grp_var }}, !!change_num) |>
+        dplyr::group_by({{ .id }}, {{ .med }}, ..., !!change_num) |>
         dplyr::summarize(
             !!"num_doses" := dplyr::n(),
-            dplyr::across(!!dose, dplyr::first),
-            # !!"curr_dose" := dplyr::first(!!dose),
-            !!"dose_start" := dplyr::first(!!med_datetime),
-            !!"dose_stop" := dplyr::last(!!med_datetime),
-            !!"dose_duration" := difftime(
-                dplyr::last(!!med_datetime),
-                dplyr::first(!!med_datetime),
-                units = units
-            ),
+            dplyr::across({{ .dose }}, dplyr::first),
+            !!"dose_start" := dplyr::first({{ .dt_tm }}),
+            !!"dose_stop" := dplyr::last({{ .dt_tm }}),
+            !!"dose_duration" := difftime(!!dose_stop, !!dose_start, units = .units),
             !!"time_next" := dplyr::last(!!time_next)
         ) |>
 
         # identify individual courses of therapy
-        dplyr::group_by(!!id, !!med, {{ .grp_var }}) |>
+        dplyr::group_by({{ .id }}, {{ .med }}, ...) |>
         dplyr::mutate(
             !!"duration" := dplyr::if_else(
-                !!time_next <= med_off & !is.na(!!time_next),
+                !!time_next <= .med_off & !is.na(!!time_next),
                 !!dose_duration + !!time_next,
                 !!dose_duration
             ),
             dplyr::across(!!duration, as.numeric),
-            !!"course_stop" := is.na(!!time_next) | !!time_next > med_off |
-                (!!dose == 0 & !!duration > no_doc),
+            !!"course_stop" := is.na(!!time_next) | !!time_next > .med_off |
+                ({{ .dose }} == 0 & !!duration > .no_doc),
             !!"course_start" := !!change_num == 1 | dplyr::lag(!!course_stop),
             !!"course_count" := cumsum(!!course_start)
         ) |>
 
         # calculate run time
-        dplyr::group_by(!!id, !!med, {{ .grp_var }}, !!course_count) |>
+        dplyr::group_by({{ .id }}, {{ .med }}, ..., !!course_count) |>
         dplyr::mutate(
-            !!"start_time" := difftime(
-                !!dose_start,
-                dplyr::first(!!dose_start),
-                units = units
-            )
+            !!"start_time" := difftime(!!dose_start, dplyr::first(!!dose_start), units = .units)
         ) |>
 
         # remove unnecessary columns
@@ -265,7 +227,6 @@ med_runtime <- function(df, ..., .grp_var, med_off = 24, no_doc = 24, units = "h
             -!!course_stop,
             -!!change_num
         ) |>
-        # dplyr::rename(!!"dose" := !!curr_dose) |>
         dplyr::ungroup()
 
     # update drip stop information if rate of last row isn't 0

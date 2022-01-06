@@ -4,27 +4,39 @@
 \alias{med_runtime}
 \title{Calculate the running time for intermittent medication data}
 \usage{
-med_runtime(df, ..., .grp_var, med_off = 24, no_doc = 24, units = "hours")
+med_runtime(
+  df,
+  ...,
+  .id = encntr_id,
+  .med = medication,
+  .dt_tm = med_datetime,
+  .dose = dose,
+  .med_off = 36,
+  .no_doc = 24,
+  .units = "hours"
+)
 }
 \arguments{
 \item{df}{A data frame}
 
-\item{...}{optional named arguments with column names; optional arguments
-are: id, med, med_datetime, and dose; if not specified, encntr_id, medication,
-med_datetime, and dose are used for column names, respectively}
+\item{...}{Optional columns to group by}
 
-\item{.grp_var}{column names to group by, uses \code{tidy_select}}
+\item{.id}{Patient identifier column, defaults to encntr_id}
 
-\item{med_off}{An optional numeric indicating the number of hours between
-medication doses which will be counted as a new course, defaults to 36
-hours}
+\item{.med}{Medication column, defaults to medication}
 
-\item{no_doc}{An optional numeric indicating the number of hours without
-documentation which will be used to indicate a course has ended, defaults
-to 24 hours}
+\item{.dt_tm}{Date/time column, defaults to med_datetime}
 
-\item{units}{An optional character string specifying the time units to use in
-calculations, default is hours}
+\item{.dose}{Dose column, defaults to dose}
+
+\item{.med_off}{Number of hours between medication doses which will be
+counted as a new course, defaults to 36 hours}
+
+\item{.no_doc}{Number of hours without documentation which will be used to
+indicate a course has ended, defaults to 24 hours}
+
+\item{.units}{A string specifying the time units to use in calculations,
+default is "hours"}
 }
 \value{
 A data frame
