@@ -4,14 +4,27 @@
 \alias{summarize_data}
 \title{Summarize serial measurement data}
 \usage{
-summarize_data(df, .grp_var, ...)
+summarize_data(
+  df,
+  ...,
+  .id = encntr_id,
+  .event = event,
+  .dt_tm = event_datetime,
+  .result = result
+)
 }
 \arguments{
 \item{df}{A data frame with continuous data}
 
-\item{.grp_var}{column names to group by, wrapped by dplyr::vars}
+\item{...}{Optional columns to group by}
 
-\item{...}{optional named arguments with column names}
+\item{.id}{Patient identifier column, defaults to encntr_id}
+
+\item{.event}{Event column, defaults to event}
+
+\item{.dt_tm}{Date/time column, defaults to event_datetime}
+
+\item{.result}{Result column, defaults to result}
 }
 \value{
 tibble

@@ -4,19 +4,28 @@
 \alias{calc_runtime}
 \title{Calculate the running time for serial measurement data}
 \usage{
-calc_runtime(df, ..., .grp_var, units = "hours")
+calc_runtime(
+  df,
+  ...,
+  .id = encntr_id,
+  .event = event,
+  .dt_tm = event_datetime,
+  .units = "hours"
+)
 }
 \arguments{
 \item{df}{A data frame}
 
-\item{...}{optional named arguments with column names; optional arguments
-are: id, event, and event_datetime; if not specified, encntr_id, event, and
-event_datetime are used for column names, respectively}
+\item{...}{Optional columns to group by}
 
-\item{.grp_var}{column names to group by, uses \code{tidy_select}}
+\item{.id}{Patient identifier column, defaults to encntr_id}
 
-\item{units}{An optional character string specifying the time units to use in
-calculations, default is hours}
+\item{.event}{Event column, defaults to event}
+
+\item{.dt_tm}{Date/time column, defaults to event_datetime}
+
+\item{.units}{A string specifying the time units to use in calculations,
+default is "hours"}
 }
 \value{
 A data frame

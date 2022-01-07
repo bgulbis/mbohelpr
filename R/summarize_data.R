@@ -147,60 +147,44 @@ summarize_home_meds <- function(x, ..., ref, pts = NULL, home = TRUE) {
 #' data for each patient.
 
 #' @param df A data frame with continuous data
-#' @param .grp_var column names to group by, wrapped by dplyr::vars
-#' @param ... optional named arguments with column names
+#' @param ... Optional columns to group by
+#' @param .id Patient identifier column, defaults to encntr_id
+#' @param .event Event column, defaults to event
+#' @param .dt_tm Date/time column, defaults to event_datetime
+#' @param .result Result column, defaults to result
 #'
 #' @return tibble
 #'
 #' @export
-summarize_data <- function(df, .grp_var, ...) {
+summarize_data <- function(df, ..., .id = encntr_id, .event = event,
+                           .dt_tm = event_datetime, .result = result) {
     # turn off scientific notation
     options(scipen = 999)
 
-
-    cols <- rlang::enquos(...)
-
-    # if ("id" %in% names(cols)) {
-    #     id <- cols$id
-    # } else {
-    #     id <- rlang::sym("encounter_id")
-    # }
-
-    if ("event" %in% names(cols)) {
-        event <- cols$event
-    } else {
-        event <- rlang::sym("event")
-    }
-
-    if ("event_datetime" %in% names(cols)) {
-        event_datetime <- cols$event_datetime
-    } else {
-        event_datetime <- rlang::sym("event_datetime")
-    }
-
-    if ("result" %in% names(cols)) {
-        result <- cols$result
-    } else {
-        result <- rlang::sym("result")
-    }
+    duration <- rlang::sym("duration")
+    start_time <- rlang::sym("start_time")
+    auc_val <- rlang::sym("auc_val")
 
     df |>
-        dplyr::add_count(!!!.grp_var, !!event) |>
-        group_by(!!!.grp_var, !!event, !!rlang::sym("n")) |>
+        group_by({{ .id }}, {{ .event }}, ...) |>
         summarize(
-            !!"first_datetime" := dplyr::first(!!event_datetime),
-            !!"last_datetime" := dplyr::last(!!event_datetime),
-            !!"cum_sum" := sum(!!result),
-            !!"first_result" := dplyr::first(!!result),
-            !!"last_result" := dplyr::last(!!result),
-            !!"median_result" := stats::median(!!result, na.rm = TRUE),
-            !!"max_result" := max(!!result, na.rm = TRUE),
-            !!"min_result" := min(!!result, na.rm = TRUE),
-            !!"auc" := MESS::auc(!!rlang::sym("start_time"), !!result),
-            !!"duration" := dplyr::last(!!rlang::sym("start_time"))
+            !!"n" := dplyr::n(),
+            !!"first_datetime" := dplyr::first({{ .dt_tm }}),
+            !!"last_datetime" := dplyr::last({{ .dt_tm }}),
+            !!"cum_sum" := sum({{ .result }}, na.rm = TRUE),
+            !!"first_result" := dplyr::first({{ .result }}),
+            !!"last_result" := dplyr::last({{ .result }}),
+            !!"median_result" := stats::median({{ .result }}, na.rm = TRUE),
+            !!"max_result" := max({{ .result }}, na.rm = TRUE),
+            !!"min_result" := min({{ .result }}, na.rm = TRUE),
+            !!"auc_val" := MESS::auc(!!start_time, {{ .result }}),
+            !!"duration" := dplyr::last(!!start_time),
+            .groups = "keep"
         ) |>
-        group_by(!!!.grp_var, !!event) |>
-        dplyr::mutate_at("duration", as.numeric) |>
-        mutate(!!"time_wt_avg" := !!rlang::sym("auc") / !!rlang::sym("duration")) |>
+        dplyr::mutate(
+            dplyr::across(!!duration, as.numeric),
+            !!"time_wt_avg" := !!auc_val / !!duration
+        ) |>
+        dplyr::rename(!!"auc" := !!auc_val) |>
         ungroup()
 }

@@ -273,67 +273,32 @@ med_runtime <- function(df, ..., .id = encntr_id, .med = medication,
 #' time.
 
 #' @param df A data frame
-#' @param ... optional named arguments with column names; optional arguments
-#'   are: id, event, and event_datetime; if not specified, encntr_id, event, and
-#'   event_datetime are used for column names, respectively
-#' @param .grp_var column names to group by, uses \code{tidy_select}
-#' @param units An optional character string specifying the time units to use in
-#'   calculations, default is hours
+#' @param ... Optional columns to group by
+#' @param .id Patient identifier column, defaults to encntr_id
+#' @param .event Event column, defaults to event
+#' @param .dt_tm Date/time column, defaults to event_datetime
+#' @param .units A string specifying the time units to use in calculations,
+#'   default is "hours"
 #'
 #' @return A data frame
 #'
 #' @export
-calc_runtime <- function(df, ..., .grp_var, units = "hours") {
-    cols <- rlang::enquos(...)
+calc_runtime <- function(df, ..., .id = encntr_id, .event = event,
+                         .dt_tm = event_datetime, .units = "hours") {
 
-    if ("id" %in% names(cols)) {
-        id <- cols$id
-    } else {
-        id <- rlang::sym("encntr_id")
-    }
-
-    if ("event" %in% names(cols)) {
-        event <- cols$event
-    } else {
-        event <- rlang::sym("event")
-    }
-
-    if ("event_datetime" %in% names(cols)) {
-        event_datetime <- cols$event_datetime
-    } else {
-        event_datetime <- rlang::sym("event_datetime")
-    }
-
-    # if ("result" %in% names(cols)) {
-    #     result <- cols$result
-    # } else {
-    #     result <- rlang::sym("result")
-    # }
+    duration <- rlang::sym("duration")
+    start_time <- rlang::sym("start_time")
 
     df |>
-        dplyr::group_by(!!id, !!event, {{ .grp_var }}) |>
-        dplyr::arrange(!!event_datetime, .by_group = TRUE) |>
+        dplyr::group_by({{ .id }}, {{ .event }}, ...) |>
+        dplyr::arrange({{ .dt_tm }}, .by_group = TRUE) |>
         dplyr::mutate(
-            !!"duration" := difftime(
-                !!event_datetime,
-                dplyr::lag(!!event_datetime),
-                units = units
-            ),
-            !!"duration" := as.numeric(!!sym("duration")),
-            !!"duration" := dplyr::coalesce(!!sym("duration"), 0),
-            !!"start_time" := difftime(
-                !!event_datetime,
-                dplyr::first(!!event_datetime),
-                units = units
-            )
+            !!"duration" := difftime({{ .dt_tm }}, dplyr::lag({{ .dt_tm }}), units = .units),
+            dplyr::across(!!duration, as.numeric),
+            dplyr::across(!!duration, ~coalesce(., 0)),
+            !!"start_time" := difftime({{ .dt_tm }}, dplyr::first({{ .dt_tm }}), units = .units)
         ) |>
         dplyr::ungroup() |>
-        dplyr::distinct(
-            !!id,
-            !!event,
-            {{ .grp_var }},
-            !!rlang::sym("start_time"),
-            .keep_all = TRUE
-        )
+        dplyr::distinct({{ .id }}, {{ .event }}, ..., !!start_time, .keep_all = TRUE)
 
 }
