@@ -22,10 +22,12 @@ set_data_path <- function(folder, project = "") {
         f <- paste0("/Volumes/brgulbis/Data/", folder, "/")
     }
 
-    if (!dir.exists(f)) {
-        f <- paste0(project, "/")
-    } else {
-        f <- paste0(f, project, "/")
+    if (project != "") {
+        if (!dir.exists(f)) {
+            f <- paste0(project, "/")
+        } else {
+            f <- paste0(f, project, "/")
+        }
     }
 
     f

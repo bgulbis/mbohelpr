@@ -63,6 +63,9 @@ drip_runtime <- function(df, ..., .id = encntr_id, .med = medication,
         # fill in missing rates
         tidyr::fill({{ .rate }}, .direction = "down") |>
 
+        # remove any missing rates
+        # dplyr::filter(!is.na({{ .rate }})) |>
+
         # calculate time between rows and order of rate changes
         dplyr::mutate(
             !!"time_next" := difftime(dplyr::lead({{ .dt_tm }}), {{ .dt_tm }}, units = .units),
