@@ -4,20 +4,32 @@
 \alias{lab_change}
 \title{Determine if a lab changed by a set amount within a specific time frame}
 \usage{
-lab_change(df, ..., change.by, FUN, back = 2)
+lab_change(
+  df,
+  change_by,
+  FUN,
+  back = 2,
+  .id = encntr_id,
+  .dt_tm = lab_datetime,
+  .result = result_val
+)
 }
 \arguments{
 \item{df}{A data frame with lab data}
 
-\item{...}{optional named arguments with column names}
-
-\item{change.by}{A numeric indicating the threshold for lab changes}
+\item{change_by}{A numeric indicating the threshold for lab changes}
 
 \item{FUN}{A function for \code{rollapplyr}, most commonly max or
 min}
 
 \item{back}{An optional numeric specifying the number of days back to go.
 Defaults to 2 days.}
+
+\item{.id}{Patient identifier column, defaults to encntr_id}
+
+\item{.dt_tm}{Date/time column, defaults to lab_datetime}
+
+\item{.result}{Lab result, defaults to result_val}
 }
 \value{
 A data frame

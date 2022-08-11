@@ -11,13 +11,14 @@
 #' looking for an increase in lab value.
 #'
 #' @param df A data frame with lab data
-# @param .lab A character string indicating the name of the lab to evaluate
-#' @param ... optional named arguments with column names
-#' @param change.by A numeric indicating the threshold for lab changes
+#' @param change_by A numeric indicating the threshold for lab changes
 #' @param FUN A function for \code{rollapplyr}, most commonly max or
 #'   min
 #' @param back An optional numeric specifying the number of days back to go.
 #'   Defaults to 2 days.
+#' @param .id Patient identifier column, defaults to encntr_id
+#' @param .dt_tm Date/time column, defaults to lab_datetime
+#' @param .result Lab result, defaults to result_val
 #'
 #' @return A data frame
 #'
@@ -30,36 +31,8 @@
 #' ))
 #'
 #' @export
-lab_change <- function(df, ..., change.by, FUN, back = 2) {
-    cols <- rlang::enquos(...)
-
-    if ("id" %in% names(cols)) {
-        id <- cols$id
-    } else {
-        id <- rlang::sym("encntr_id")
-    }
-
-    # if ("lab" %in% names(cols)) {
-    #     lab <- cols$lab
-    # } else if ("event" %in% names(cols)) {
-    #     lab <- cols$event
-    # } else {
-    #     lab <- rlang::sym("lab")
-    # }
-
-    if ("lab_datetime" %in% names(cols)) {
-        lab_datetime <- cols$lab_datetime
-    } else if ("event_datetime" %in% names(cols)) {
-        lab_datetime <- cols$event_datetime
-    } else {
-        lab_datetime <- rlang::sym("lab_datetime")
-    }
-
-    if ("lab_result" %in% names(cols)) {
-        lab_result <- cols$lab_result
-    } else {
-        lab_result <- rlang::sym("result_val")
-    }
+lab_change <- function(df, change_by, FUN, back = 2, .id = encntr_id,
+                       .dt_tm = lab_datetime, .result = result_val) {
 
     # calculate the number of rows that are included within the window, then
     # calculate the running min/max during the time window, then calculate the
@@ -69,29 +42,18 @@ lab_change <- function(df, ..., change.by, FUN, back = 2) {
 
     # lab <- rlang::sym(lab_col)
     rowsback <- rlang::sym("rowsback")
+    running <- rlang::sym("running")
 
-    df <- df %>%
-        # dplyr::filter(!!lab %in% .lab) %>%
-        # filter(
-        #     !!parse_expr(
-        #         paste(lab_col, "%in% .lab")
-        #     )
-        # ) %>%
-        dplyr::arrange(!!id, !!lab_datetime) %>%
-        dplyr::group_by(!!id) %>%
-        dplyr::mutate(!!"rowsback" := count_rowsback(!!lab_datetime, back)) %>%
-        dplyr::filter(!is.na(!!rowsback)) %>%
+    df |>
+        dplyr::arrange({{ .id }}, {{ .dt_tm }}) |>
+        dplyr::group_by({{ .id }}) |>
+        dplyr::mutate(!!"rowsback" := count_rowsback({{ .dt_tm }}, back)) |>
+        dplyr::filter(!is.na(!!rowsback)) |>
         dplyr::mutate(
-            !!"running" := zoo::rollapplyr(
-                !!lab_result,
-                !!rowsback,
-                FUN,
-                fill = NA,
-                partial = TRUE
-            ),
-            !!"change" := !!lab_result - !!rlang::sym("running")
-        ) %>%
-        dplyr::filter(!!rlang::parse_expr("abs(change) >= abs(change.by)")) %>%
+            !!"running" := zoo::rollapplyr({{ .result }}, !!rowsback, FUN, fill = NA, partial = TRUE),
+            !!"change" := {{ .result }} - !!running
+        ) |>
+        dplyr::filter(!!rlang::parse_expr("abs(change) >= abs(change_by)")) |>
         dplyr::ungroup()
 }
 
