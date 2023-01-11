@@ -4,13 +4,22 @@
 \alias{get_xlsx_data}
 \title{Get data from xlsx files}
 \usage{
-get_xlsx_data(path, pattern, col_names = TRUE, col_types = NULL, skip = 0)
+get_xlsx_data(
+  path,
+  pattern,
+  sheet = NULL,
+  col_names = TRUE,
+  col_types = NULL,
+  skip = 0
+)
 }
 \arguments{
 \item{path}{a character vector of full path names}
 
 \item{pattern}{a regular expression.  Only file names which match the regular
 expression will be returned.}
+
+\item{sheet}{sheet to read, either a string (the name of a sheet), or an integer (the position of the sheet).}
 
 \item{col_names}{\code{TRUE} to use the first row as column names,
 \code{FALSE} to get default names, or a character vector giving a name for

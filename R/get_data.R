@@ -33,6 +33,7 @@ get_data <- function(path, pattern, col_types = NULL, tz = "US/Central") {
 #' @param path a character vector of full path names
 #' @param pattern a regular expression.  Only file names which match the regular
 #'   expression will be returned.
+#' @param sheet sheet to read, either a string (the name of a sheet), or an integer (the position of the sheet).
 #' @param col_names \code{TRUE} to use the first row as column names,
 #'   \code{FALSE} to get default names, or a character vector giving a name for
 #'   each column
@@ -44,7 +45,7 @@ get_data <- function(path, pattern, col_types = NULL, tz = "US/Central") {
 #'
 #' @return A tibble
 #' @export
-get_xlsx_data <- function(path, pattern, col_names = TRUE, col_types = NULL, skip = 0) {
+get_xlsx_data <- function(path, pattern, sheet = NULL, col_names = TRUE, col_types = NULL, skip = 0) {
     f <- list.files(path, pattern, full.names = TRUE)
 
     # n <- f |>
@@ -54,6 +55,7 @@ get_xlsx_data <- function(path, pattern, col_names = TRUE, col_types = NULL, ski
     f |>
         purrr::map_df(
             readxl::read_excel,
+            sheet = sheet,
             col_names = col_names,
             col_types = col_types,
             skip = skip
