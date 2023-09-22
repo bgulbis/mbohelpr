@@ -7,7 +7,7 @@
 calc_sofa(
   df,
   .id = encntr_id,
-  .pa02 = pao2,
+  .pao2 = pao2,
   .fio2 = fio2,
   .intubated = intubated,
   .platelet = platelet,
@@ -25,7 +25,46 @@ calc_sofa(
 \arguments{
 \item{df}{data_frame}
 
-\item{...}{optional named arguments with column names}
+\item{.id}{Patient identifier column, defaults to encntr_id}
+
+\item{.pao2}{Column containing the minimum PaO2 value in the previous 24
+hours, defaults to pao2}
+
+\item{.fio2}{Column containing the maximum FiO2 value in the previous 24
+hours, defaults to fio2}
+
+\item{.intubated}{Column containing a logical which indicates whether the
+patient was intubated in the previous 24 hours, defaults to intubated}
+
+\item{.platelet}{Column containing the minimum platelets value in the
+previous 24 hours, defaults to platelet}
+
+\item{.gcs}{Column containing the minimum Glasgow Coma Score in the previous
+24 hours, defaults to gcs}
+
+\item{.bili}{Column containing the maximum total bilirubin in the previous 24
+hours, defaults to bili}
+
+\item{.map}{Column containing the minimum mean arterial pressure in the
+previous 24 hours, defaults to map}
+
+\item{.scr}{Column containing the maximum serum creatinine in the previous 24
+hours, defaults to scr}
+
+\item{.uop}{Column containing the urine output for the previous 24 hours,
+defaults to uop}
+
+\item{.dopamine}{Column containing the maximum dopamine rate in the previous
+24 hours, defaults to dopamine}
+
+\item{.dobutamine}{Column containing the maximum dobutamine rate in the
+previous 24 hours, defaults to dobutamine}
+
+\item{.epinephrine}{Column containing the maximum epinephrine rate in the
+previous 24 hours, defaults to epinephrine}
+
+\item{.norepinephrine}{Column containing the maximum norepinephrine rate in
+the previous 24 hours, defaults to norepinephrine}
 }
 \value{
 data_frame
@@ -36,5 +75,6 @@ SOFA score. The columns containing each of these parameters can optionally be
 passed as named arguments if they differ from the default column names.
 }
 \references{
-Sequential Organ Failure Assessment (SOFA) Score: https://www.mdcalc.com/calc/691/sequential-organ-failure-assessment-sofa-score
+Sequential Organ Failure Assessment (SOFA) Score:
+  https://www.mdcalc.com/calc/691/sequential-organ-failure-assessment-sofa-score
 }

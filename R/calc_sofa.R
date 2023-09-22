@@ -6,20 +6,53 @@
 #' passed as named arguments if they differ from the default column names.
 #'
 #' @param df data_frame
-#' @param ... optional named arguments with column names
+#' @param .id Patient identifier column, defaults to encntr_id
+#' @param .pao2 Column containing the minimum PaO2 value in the previous 24
+#'   hours, defaults to pao2
+#' @param .fio2 Column containing the maximum FiO2 value in the previous 24
+#'   hours, defaults to fio2
+#' @param .intubated Column containing a logical which indicates whether the
+#'   patient was intubated in the previous 24 hours, defaults to intubated
+#' @param .platelet Column containing the minimum platelets value in the
+#'   previous 24 hours, defaults to platelet
+#' @param .gcs Column containing the minimum Glasgow Coma Score in the previous
+#'   24 hours, defaults to gcs
+#' @param .bili Column containing the maximum total bilirubin in the previous 24
+#'   hours, defaults to bili
+#' @param .map Column containing the minimum mean arterial pressure in the
+#'   previous 24 hours, defaults to map
+#' @param .scr Column containing the maximum serum creatinine in the previous 24
+#'   hours, defaults to scr
+#' @param .uop Column containing the urine output for the previous 24 hours,
+#'   defaults to uop
+#' @param .dopamine Column containing the maximum dopamine rate in the previous
+#'   24 hours, defaults to dopamine
+#' @param .dobutamine Column containing the maximum dobutamine rate in the
+#'   previous 24 hours, defaults to dobutamine
+#' @param .epinephrine Column containing the maximum epinephrine rate in the
+#'   previous 24 hours, defaults to epinephrine
+#' @param .norepinephrine Column containing the maximum norepinephrine rate in
+#'   the previous 24 hours, defaults to norepinephrine
 #'
 #' @return data_frame
 #'
-#' @references Sequential Organ Failure Assessment (SOFA) Score: https://www.mdcalc.com/calc/691/sequential-organ-failure-assessment-sofa-score
+#' @references Sequential Organ Failure Assessment (SOFA) Score:
+#'   https://www.mdcalc.com/calc/691/sequential-organ-failure-assessment-sofa-score
 #'
 #' @export
-calc_sofa <- function(df, .id = encntr_id, .pa02 = pao2, .fio2 = fio2,
+calc_sofa <- function(df, .id = encntr_id, .pao2 = pao2, .fio2 = fio2,
                       .intubated = intubated, .platelet = platelet, .gcs = gcs,
                       .bili = bili, .map = map, .scr = scr, .uop = uop,
                       .dopamine = dopamine, .dobutamine = dobutamine,
                       .epinephrine = epinephrine, .norepinephrine = norepinephrine) {
 
+    plt_score <- rlang::sym("plt_score")
+    gcs_score <- rlang::sym("gcs_score")
+    bili_score <- rlang::sym("bili_score")
+    map_score <- rlang::sym("map_score")
+    scr_score <- rlang::sym("scr_score")
     pao2_fio2 <- rlang::sym("pao2_fio2")
+    vent_score <- rlang::sym("vent_score")
 
     df |>
         dplyr::group_by({{ .id }}) |>
