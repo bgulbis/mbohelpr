@@ -154,6 +154,7 @@ drip_runtime <- function(df, ..., .id = encntr_id, .med = medication,
 #' @param .med Medication column, defaults to medication
 #' @param .dt_tm Date/time column, defaults to med_datetime
 #' @param .dose Dose column, defaults to dose
+#' @param .dose_unit Dose Unit column, defaults to dose_unit
 #' @param .med_off Number of hours between medication doses which will be
 #'   counted as a new course, defaults to 36 hours
 #' @param .no_doc Number of hours without documentation which will be used to
@@ -165,7 +166,7 @@ drip_runtime <- function(df, ..., .id = encntr_id, .med = medication,
 #'
 #' @export
 med_runtime <- function(df, ..., .id = encntr_id, .med = medication,
-                        .dt_tm = med_datetime, .dose = dose, .med_off = 36,
+                        .dt_tm = med_datetime, .dose = dose, .dose_unit = dose_unit, .med_off = 36,
                         .no_doc = 24, .units = "hours") {
 
     time_next <- rlang::sym("time_next")
@@ -196,7 +197,7 @@ med_runtime <- function(df, ..., .id = encntr_id, .med = medication,
         dplyr::group_by({{ .id }}, {{ .med }}, ..., !!change_num) |>
         dplyr::summarize(
             !!"num_doses" := dplyr::n(),
-            dplyr::across({{ .dose }}, dplyr::first),
+            dplyr::across(c({{ .dose }}, {{ .dose_unit }}), dplyr::first),
             !!"dose_start" := dplyr::first({{ .dt_tm }}),
             !!"dose_stop" := dplyr::last({{ .dt_tm }}),
             !!"dose_duration" := difftime(!!dose_stop, !!dose_start, units = .units),

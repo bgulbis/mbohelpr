@@ -11,6 +11,7 @@ med_runtime(
   .med = medication,
   .dt_tm = med_datetime,
   .dose = dose,
+  .dose_unit = dose_unit,
   .med_off = 36,
   .no_doc = 24,
   .units = "hours"
@@ -28,6 +29,8 @@ med_runtime(
 \item{.dt_tm}{Date/time column, defaults to med_datetime}
 
 \item{.dose}{Dose column, defaults to dose}
+
+\item{.dose_unit}{Dose Unit column, defaults to dose_unit}
 
 \item{.med_off}{Number of hours between medication doses which will be
 counted as a new course, defaults to 36 hours}
