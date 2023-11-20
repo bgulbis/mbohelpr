@@ -15,14 +15,15 @@
 #' @param .id Patient identifier column, defaults to encntr_id
 #' @param .med Medication column, defaults to medication
 #' @param .rate Infusion rate column, defaults to rate
+#' @param .rate_unit Infusion rate units column, defaults to rate_unit
 #' @param .units A string specifying the time units to use in calculations,
 #'   default is "hours"
 #'
 #' @return A data frame
 #'
 #' @export
-summarize_drips <- function(df, ..., .id = encntr_id, .med = medication,
-                            .rate = rate, .units = "hours") {
+summarize_drips <- function(df, ..., .id = encntr_id, .med = medication, .rate = rate, .rate_unit = rate_unit,
+                            .units = "hours") {
     # turn off scientific notation
     options(scipen = 999)
 
@@ -53,6 +54,7 @@ summarize_drips <- function(df, ..., .id = encntr_id, .med = medication,
                 dplyr::last(!!rate_start),
                 dplyr::last(!!rate_stop)
             ),
+            dplyr::across({{ .rate_unit }}, dplyr::first),
             !!"cum_dose" := sum({{ .rate }} * !!duration, na.rm = TRUE),
             !!"first_rate" := dplyr::first({{ .rate }}),
             !!"max_rate" := max({{ .rate }}, na.rm = TRUE),

@@ -10,6 +10,7 @@ summarize_drips(
   .id = encntr_id,
   .med = medication,
   .rate = rate,
+  .rate_unit = rate_unit,
   .units = "hours"
 )
 }
@@ -23,6 +24,8 @@ summarize_drips(
 \item{.med}{Medication column, defaults to medication}
 
 \item{.rate}{Infusion rate column, defaults to rate}
+
+\item{.rate_unit}{Infusion rate units column, defaults to rate_unit}
 
 \item{.units}{A string specifying the time units to use in calculations,
 default is "hours"}

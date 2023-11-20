@@ -34,10 +34,8 @@
 #' @return A data frame
 #'
 #' @export
-drip_runtime <- function(df, ..., .id = encntr_id, .med = medication,
-                         .dt_tm = med_datetime, .rate = rate,
-                         .rate_unit = rate_unit, .drip_off = 12, .no_doc = 24,
-                         .units = "hours") {
+drip_runtime <- function(df, ..., .id = encntr_id, .med = medication, .dt_tm = med_datetime, .rate = rate,
+                         .rate_unit = rate_unit, .drip_off = 12, .no_doc = 24, .units = "hours") {
 
     change_num <- rlang::sym("change_num")
     rate_change <- rlang::sym("rate_change")
@@ -76,7 +74,7 @@ drip_runtime <- function(df, ..., .id = encntr_id, .med = medication,
         # calculate how long the drip was at each rate
         dplyr::group_by({{ .id }}, {{ .med }}, ..., !!change_num) |>
         dplyr::summarize(
-            dplyr::across({{ .rate }}, dplyr::first),
+            dplyr::across(c({{ .rate }}, {{ .rate_unit }}), dplyr::first),
             !!"rate_start" := dplyr::first({{ .dt_tm }}),
             !!"rate_stop" := dplyr::last({{ .dt_tm }}),
             !!"rate_duration" := difftime(!!rate_stop, !!rate_start, units = .units),
@@ -165,9 +163,8 @@ drip_runtime <- function(df, ..., .id = encntr_id, .med = medication,
 #' @return A data frame
 #'
 #' @export
-med_runtime <- function(df, ..., .id = encntr_id, .med = medication,
-                        .dt_tm = med_datetime, .dose = dose, .dose_unit = dose_unit, .med_off = 36,
-                        .no_doc = 24, .units = "hours") {
+med_runtime <- function(df, ..., .id = encntr_id, .med = medication, .dt_tm = med_datetime, .dose = dose,
+                        .dose_unit = dose_unit, .med_off = 36, .no_doc = 24, .units = "hours") {
 
     time_next <- rlang::sym("time_next")
     dose_change <- rlang::sym("dose_change")
