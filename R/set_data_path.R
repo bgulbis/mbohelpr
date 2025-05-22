@@ -21,7 +21,7 @@ set_data_path <- function(folder, project = "") {
     } else if (Sys.info()['sysname'] == "Darwin") { # macOS
         f <- paste0("/Volumes/brgulbis/Data/", folder, "/")
     } else if (Sys.info()['sysname'] == "Linux") { # Ubuntu
-        f <- paste0("/mnt/u/Data/")
+        f <- paste0("/mnt/u/Data/", folder, "/")
     }
 
     if (project != "") {
